@@ -1,14 +1,29 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
-import { CommandBus } from '@nestjs/cqrs';
+import {
+  Controller,
+  Post,
+  Get,
+  UseGuards,
+  Body,
+  Version,
+} from '@nestjs/common';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { LoginDto } from './dto/login.dto';
-import { CreateUserDto } from './dto/create-user.dto';
+
 import { LoginCommand } from './commands/impl/login.command';
-import { CreateUserCommand } from './commands/impl/create-user.command';
+
+import { GetUserQuery } from './queries/impl/get-user.query';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { IUser } from './interfaces/user.interface';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly commandBus: CommandBus) {}
+  constructor(
+    private readonly commandBus: CommandBus,
+    private readonly queryBus: QueryBus,
+  ) {}
 
+  @Version('1')
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     return this.commandBus.execute(
@@ -16,8 +31,10 @@ export class AuthController {
     );
   }
 
-  @Post('register')
-  async register(@Body() createUserDto: CreateUserDto) {
-    return this.commandBus.execute(new CreateUserCommand(createUserDto));
+  @Version('1')
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  async getProfile(@CurrentUser() user: IUser) {
+    return this.queryBus.execute(new GetUserQuery(user.id));
   }
 }

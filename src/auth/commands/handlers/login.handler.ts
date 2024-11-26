@@ -2,8 +2,8 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UnauthorizedException } from '@nestjs/common';
 import { LoginCommand } from '../impl/login.command';
 import { PrismaService } from '../../../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 
 @CommandHandler(LoginCommand)
 export class LoginHandler implements ICommandHandler<LoginCommand> {
@@ -17,9 +17,6 @@ export class LoginHandler implements ICommandHandler<LoginCommand> {
 
     const user = await this.prisma.tb_user.findUnique({
       where: { email },
-      include: {
-        user_auth_settings: true,
-      },
     });
 
     if (!user) {
@@ -40,7 +37,6 @@ export class LoginHandler implements ICommandHandler<LoginCommand> {
     );
 
     if (!isPasswordValid) {
-      // Update failed login attempts
       const additionalInfo = JSON.parse(
         user.additional_info || '{"failedLoginAttempts": 0}',
       );
@@ -57,7 +53,6 @@ export class LoginHandler implements ICommandHandler<LoginCommand> {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Reset failed attempts and update last login
     const now = Date.now();
     await this.prisma.tb_user.update({
       where: { id: user.id },
@@ -69,7 +64,11 @@ export class LoginHandler implements ICommandHandler<LoginCommand> {
       },
     });
 
-    const payload = { sub: user.id, email: user.email };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+    };
+
     return {
       access_token: this.jwtService.sign(payload),
       user: {
