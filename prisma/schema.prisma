@@ -1,0 +1,940 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model admin_settings {
+  id           String  @id @db.Uuid
+  tenant_id    String  @db.Uuid
+  created_time BigInt
+  json_value   String? @db.VarChar
+  key          String? @db.VarChar(255)
+}
+
+model alarm {
+  id                       String          @id @db.Uuid
+  created_time             BigInt
+  ack_ts                   BigInt?
+  clear_ts                 BigInt?
+  additional_info          String?         @db.VarChar
+  end_ts                   BigInt?
+  originator_id            String?         @db.Uuid
+  originator_type          Int?
+  propagate                Boolean?
+  severity                 String?         @db.VarChar(255)
+  start_ts                 BigInt?
+  assign_ts                BigInt?         @default(0)
+  assignee_id              String?         @db.Uuid
+  tenant_id                String?         @db.Uuid
+  customer_id              String?         @db.Uuid
+  propagate_relation_types String?         @db.VarChar
+  type                     String?         @db.VarChar(255)
+  propagate_to_owner       Boolean?
+  propagate_to_tenant      Boolean?
+  acknowledged             Boolean?
+  cleared                  Boolean?
+  alarm_comment            alarm_comment[] @ignore
+  entity_alarm             entity_alarm[]
+
+  @@index([originator_id, type, start_ts(sort: Desc)], map: "idx_alarm_originator_alarm_type")
+  @@index([originator_id, created_time(sort: Desc)], map: "idx_alarm_originator_created_time")
+  @@index([tenant_id, type, created_time(sort: Desc)], map: "idx_alarm_tenant_alarm_type_created_time")
+  @@index([tenant_id, assignee_id, created_time(sort: Desc)], map: "idx_alarm_tenant_assignee_created_time")
+  @@index([tenant_id, created_time(sort: Desc)], map: "idx_alarm_tenant_created_time")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model alarm_comment {
+  id           String  @db.Uuid
+  created_time BigInt
+  alarm_id     String  @db.Uuid
+  user_id      String? @db.Uuid
+  type         String  @db.VarChar(255)
+  comment      String? @db.VarChar(10000)
+  alarm        alarm   @relation(fields: [alarm_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_alarm_comment_alarm_id")
+
+  @@index([alarm_id], map: "idx_alarm_comment_alarm_id")
+  @@ignore
+}
+
+model alarm_types {
+  tenant_id String @db.Uuid
+  type      String @db.VarChar(255)
+  tenant    tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_entity_tenant_id")
+
+  @@unique([tenant_id, type], map: "tenant_id_type_unq_key")
+}
+
+model api_usage_state {
+  id           String  @id(map: "usage_record_pkey") @db.Uuid
+  created_time BigInt
+  tenant_id    String? @db.Uuid
+  entity_type  String? @db.VarChar(32)
+  entity_id    String? @db.Uuid
+  transport    String? @db.VarChar(32)
+  db_storage   String? @db.VarChar(32)
+  re_exec      String? @db.VarChar(32)
+  js_exec      String? @db.VarChar(32)
+  email_exec   String? @db.VarChar(32)
+  sms_exec     String? @db.VarChar(32)
+  alarm_exec   String? @db.VarChar(32)
+
+  @@unique([tenant_id, entity_id], map: "api_usage_state_unq_key")
+  @@index([entity_id], map: "idx_api_usage_state_entity_id")
+}
+
+model asset {
+  id               String        @id @db.Uuid
+  created_time     BigInt
+  additional_info  String?       @db.VarChar
+  customer_id      String?       @db.Uuid
+  asset_profile_id String        @db.Uuid
+  name             String?       @db.VarChar(255)
+  label            String?       @db.VarChar(255)
+  tenant_id        String?       @db.Uuid
+  type             String?       @db.VarChar(255)
+  external_id      String?       @db.Uuid
+  asset_profile    asset_profile @relation(fields: [asset_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_asset_profile")
+
+  @@unique([tenant_id, external_id], map: "asset_external_id_unq_key")
+  @@unique([tenant_id, name], map: "asset_name_unq_key")
+  @@index([tenant_id, customer_id], map: "idx_asset_customer_id")
+  @@index([tenant_id, customer_id, type], map: "idx_asset_customer_id_and_type")
+  @@index([tenant_id, external_id], map: "idx_asset_external_id")
+  @@index([tenant_id, type], map: "idx_asset_type")
+}
+
+model asset_profile {
+  id                                                              String      @id @db.Uuid
+  created_time                                                    BigInt
+  name                                                            String?     @db.VarChar(255)
+  image                                                           String?     @db.VarChar(1000000)
+  description                                                     String?     @db.VarChar
+  is_default                                                      Boolean?
+  tenant_id                                                       String?     @db.Uuid
+  default_rule_chain_id                                           String?     @db.Uuid
+  default_dashboard_id                                            String?     @db.Uuid
+  default_queue_name                                              String?     @db.VarChar(255)
+  default_edge_rule_chain_id                                      String?     @db.Uuid
+  external_id                                                     String?     @db.Uuid
+  asset                                                           asset[]
+  dashboard                                                       dashboard?  @relation(fields: [default_dashboard_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_default_dashboard_asset_profile")
+  rule_chain_asset_profile_default_edge_rule_chain_idTorule_chain rule_chain? @relation("asset_profile_default_edge_rule_chain_idTorule_chain", fields: [default_edge_rule_chain_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_default_edge_rule_chain_asset_profile")
+  rule_chain_asset_profile_default_rule_chain_idTorule_chain      rule_chain? @relation("asset_profile_default_rule_chain_idTorule_chain", fields: [default_rule_chain_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_default_rule_chain_asset_profile")
+
+  @@unique([tenant_id, external_id], map: "asset_profile_external_id_unq_key")
+  @@unique([tenant_id, name], map: "asset_profile_name_unq_key")
+}
+
+model attribute_kv {
+  entity_type    String   @db.VarChar(255)
+  entity_id      String   @db.Uuid
+  attribute_type String   @db.VarChar(255)
+  attribute_key  String   @db.VarChar(255)
+  bool_v         Boolean?
+  str_v          String?  @db.VarChar(10000000)
+  long_v         BigInt?
+  dbl_v          Float?
+  json_v         Json?    @db.Json
+  last_update_ts BigInt?
+
+  @@id([entity_type, entity_id, attribute_type, attribute_key])
+  @@index([entity_id, attribute_key, last_update_ts(sort: Desc)], map: "idx_attribute_kv_by_key_and_last_update_ts")
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model audit_log {
+  id                     String  @db.Uuid
+  created_time           BigInt
+  tenant_id              String? @db.Uuid
+  customer_id            String? @db.Uuid
+  entity_id              String? @db.Uuid
+  entity_type            String? @db.VarChar(255)
+  entity_name            String? @db.VarChar(255)
+  user_id                String? @db.Uuid
+  user_name              String? @db.VarChar(255)
+  action_type            String? @db.VarChar(255)
+  action_data            String? @db.VarChar(1000000)
+  action_status          String? @db.VarChar(255)
+  action_failure_details String? @db.VarChar(1000000)
+
+  @@index([id], map: "idx_audit_log_id")
+  @@index([tenant_id, created_time(sort: Desc)], map: "idx_audit_log_tenant_id_and_created_time")
+  @@ignore
+}
+
+model component_descriptor {
+  id                       String  @id @db.Uuid
+  created_time             BigInt
+  actions                  String? @db.VarChar(255)
+  clazz                    String? @unique @db.VarChar
+  configuration_descriptor String? @db.VarChar
+  configuration_version    Int?    @default(0)
+  name                     String? @db.VarChar(255)
+  scope                    String? @db.VarChar(255)
+  type                     String? @db.VarChar(255)
+  clustering_mode          String? @db.VarChar(255)
+}
+
+model customer {
+  id              String  @id @db.Uuid
+  created_time    BigInt
+  additional_info String? @db.VarChar
+  address         String? @db.VarChar
+  address2        String? @db.VarChar
+  city            String? @db.VarChar(255)
+  country         String? @db.VarChar(255)
+  email           String? @db.VarChar(255)
+  phone           String? @db.VarChar(255)
+  state           String? @db.VarChar(255)
+  tenant_id       String? @db.Uuid
+  title           String? @db.VarChar(255)
+  zip             String? @db.VarChar(255)
+  external_id     String? @db.Uuid
+
+  @@unique([tenant_id, external_id], map: "customer_external_id_unq_key")
+  @@index([tenant_id, external_id], map: "idx_customer_external_id")
+}
+
+model dashboard {
+  id                 String           @id @db.Uuid
+  created_time       BigInt
+  configuration      String?          @db.VarChar
+  assigned_customers String?          @db.VarChar(1000000)
+  tenant_id          String?          @db.Uuid
+  title              String?          @db.VarChar(255)
+  mobile_hide        Boolean?         @default(false)
+  mobile_order       Int?
+  image              String?          @db.VarChar(1000000)
+  external_id        String?          @db.Uuid
+  asset_profile      asset_profile[]
+  device_profile     device_profile[]
+
+  @@unique([tenant_id, external_id], map: "dashboard_external_id_unq_key")
+  @@index([tenant_id, external_id], map: "idx_dashboard_external_id")
+}
+
+model device {
+  id                                          String         @id @db.Uuid
+  created_time                                BigInt
+  additional_info                             String?        @db.VarChar
+  customer_id                                 String?        @db.Uuid
+  device_profile_id                           String         @db.Uuid
+  device_data                                 Json?
+  type                                        String?        @db.VarChar(255)
+  name                                        String?        @db.VarChar(255)
+  label                                       String?        @db.VarChar(255)
+  tenant_id                                   String?        @db.Uuid
+  firmware_id                                 String?        @db.Uuid
+  software_id                                 String?        @db.Uuid
+  external_id                                 String?        @db.Uuid
+  device_profile                              device_profile @relation(fields: [device_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_device_profile")
+  ota_package_device_firmware_idToota_package ota_package?   @relation("device_firmware_idToota_package", fields: [firmware_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_firmware_device")
+  ota_package_device_software_idToota_package ota_package?   @relation("device_software_idToota_package", fields: [software_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_software_device")
+
+  @@unique([tenant_id, external_id], map: "device_external_id_unq_key")
+  @@unique([tenant_id, name], map: "device_name_unq_key")
+  @@index([tenant_id, customer_id], map: "idx_device_customer_id")
+  @@index([tenant_id, customer_id, type], map: "idx_device_customer_id_and_type")
+  @@index([tenant_id, device_profile_id], map: "idx_device_device_profile_id")
+  @@index([tenant_id, external_id], map: "idx_device_external_id")
+  @@index([tenant_id, type], map: "idx_device_type")
+}
+
+model device_credentials {
+  id                String  @id @db.Uuid
+  created_time      BigInt
+  credentials_id    String? @unique(map: "device_credentials_id_unq_key") @db.VarChar
+  credentials_type  String? @db.VarChar(255)
+  credentials_value String? @db.VarChar
+  device_id         String? @unique(map: "device_credentials_device_id_unq_key") @db.Uuid
+}
+
+model device_profile {
+  id                                                               String        @id @db.Uuid
+  created_time                                                     BigInt
+  name                                                             String?       @db.VarChar(255)
+  type                                                             String?       @db.VarChar(255)
+  image                                                            String?       @db.VarChar(1000000)
+  transport_type                                                   String?       @db.VarChar(255)
+  provision_type                                                   String?       @db.VarChar(255)
+  profile_data                                                     Json?
+  description                                                      String?       @db.VarChar
+  is_default                                                       Boolean?
+  tenant_id                                                        String?       @db.Uuid
+  firmware_id                                                      String?       @db.Uuid
+  software_id                                                      String?       @db.Uuid
+  default_rule_chain_id                                            String?       @db.Uuid
+  default_dashboard_id                                             String?       @db.Uuid
+  default_queue_name                                               String?       @db.VarChar(255)
+  provision_device_key                                             String?       @unique(map: "device_provision_key_unq_key") @db.VarChar
+  default_edge_rule_chain_id                                       String?       @db.Uuid
+  external_id                                                      String?       @db.Uuid
+  device                                                           device[]
+  dashboard                                                        dashboard?    @relation(fields: [default_dashboard_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_default_dashboard_device_profile")
+  rule_chain_device_profile_default_edge_rule_chain_idTorule_chain rule_chain?   @relation("device_profile_default_edge_rule_chain_idTorule_chain", fields: [default_edge_rule_chain_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_default_edge_rule_chain_device_profile")
+  rule_chain_device_profile_default_rule_chain_idTorule_chain      rule_chain?   @relation("device_profile_default_rule_chain_idTorule_chain", fields: [default_rule_chain_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_default_rule_chain_device_profile")
+  ota_package_device_profile_firmware_idToota_package              ota_package?  @relation("device_profile_firmware_idToota_package", fields: [firmware_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_firmware_device_profile")
+  ota_package_device_profile_software_idToota_package              ota_package?  @relation("device_profile_software_idToota_package", fields: [software_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_software_device_profile")
+  ota_package_ota_package_device_profile_idTodevice_profile        ota_package[] @relation("ota_package_device_profile_idTodevice_profile")
+
+  @@unique([tenant_id, external_id], map: "device_profile_external_id_unq_key")
+  @@unique([tenant_id, name], map: "device_profile_name_unq_key")
+  @@index([tenant_id, external_id], map: "idx_device_profile_external_id")
+}
+
+model edge {
+  id                 String  @id @db.Uuid
+  created_time       BigInt
+  additional_info    String? @db.VarChar
+  customer_id        String? @db.Uuid
+  root_rule_chain_id String? @db.Uuid
+  type               String? @db.VarChar(255)
+  name               String? @db.VarChar(255)
+  label              String? @db.VarChar(255)
+  routing_key        String? @unique(map: "edge_routing_key_unq_key") @db.VarChar(255)
+  secret             String? @db.VarChar(255)
+  tenant_id          String? @db.Uuid
+
+  @@unique([tenant_id, name], map: "edge_name_unq_key")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model edge_event {
+  seq_id            Int     @default(autoincrement())
+  id                String  @db.Uuid
+  created_time      BigInt
+  edge_id           String? @db.Uuid
+  edge_event_type   String? @db.VarChar(255)
+  edge_event_uid    String? @db.VarChar(255)
+  entity_id         String? @db.Uuid
+  edge_event_action String? @db.VarChar(255)
+  body              String? @db.VarChar(10000000)
+  tenant_id         String? @db.Uuid
+  ts                BigInt
+
+  @@index([id], map: "idx_edge_event_id")
+  @@index([tenant_id, created_time(sort: Desc)], map: "idx_edge_event_tenant_id_and_created_time")
+  @@ignore
+}
+
+model entity_alarm {
+  tenant_id    String  @db.Uuid
+  entity_type  String? @db.VarChar(32)
+  entity_id    String  @db.Uuid
+  created_time BigInt
+  alarm_type   String  @db.VarChar(255)
+  customer_id  String? @db.Uuid
+  alarm_id     String  @db.Uuid
+  alarm        alarm   @relation(fields: [alarm_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_entity_alarm_id")
+
+  @@id([entity_id, alarm_id])
+  @@index([alarm_id], map: "idx_entity_alarm_alarm_id")
+  @@index([tenant_id, entity_id, created_time(sort: Desc)], map: "idx_entity_alarm_created_time")
+  @@index([tenant_id, entity_id, alarm_type, created_time(sort: Desc), alarm_id], map: "idx_entity_alarm_entity_id_alarm_type_created_time_alarm_id")
+}
+
+model entity_view {
+  id              String  @id @db.Uuid
+  created_time    BigInt
+  entity_id       String? @db.Uuid
+  entity_type     String? @db.VarChar(255)
+  tenant_id       String? @db.Uuid
+  customer_id     String? @db.Uuid
+  type            String? @db.VarChar(255)
+  name            String? @db.VarChar(255)
+  keys            String? @db.VarChar(10000000)
+  start_ts        BigInt?
+  end_ts          BigInt?
+  additional_info String? @db.VarChar
+  external_id     String? @db.Uuid
+
+  @@unique([tenant_id, external_id], map: "entity_view_external_id_unq_key")
+  @@index([tenant_id, external_id], map: "idx_entity_view_external_id")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+/// This model contains an index with non-default null sort order and requires additional setup for migrations. Visit https://pris.ly/d/default-index-null-ordering for more info.
+model error_event {
+  id         String  @db.Uuid
+  tenant_id  String  @db.Uuid
+  ts         BigInt
+  entity_id  String  @db.Uuid
+  service_id String  @db.VarChar
+  e_method   String  @db.VarChar
+  e_error    String? @db.VarChar
+
+  @@index([tenant_id, entity_id, ts(sort: Desc)], map: "idx_error_event_main")
+  @@ignore
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+/// This model contains an index with non-default null sort order and requires additional setup for migrations. Visit https://pris.ly/d/default-index-null-ordering for more info.
+model lc_event {
+  id         String  @db.Uuid
+  tenant_id  String  @db.Uuid
+  ts         BigInt
+  entity_id  String  @db.Uuid
+  service_id String  @db.VarChar
+  e_type     String  @db.VarChar
+  e_success  Boolean
+  e_error    String? @db.VarChar
+
+  @@index([tenant_id, entity_id, ts(sort: Desc)], map: "idx_lc_event_main")
+  @@ignore
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model notification {
+  id                   String                @db.Uuid
+  created_time         BigInt
+  request_id           String?               @db.Uuid
+  recipient_id         String                @db.Uuid
+  type                 String                @db.VarChar(50)
+  subject              String?               @db.VarChar(255)
+  body                 String                @db.VarChar(1000)
+  additional_config    String?               @db.VarChar(1000)
+  status               String?               @db.VarChar(32)
+  tb_user              tb_user               @relation(fields: [recipient_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notification_recipient_id")
+  notification_request notification_request? @relation(fields: [request_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_notification_request_id")
+
+  @@index([id], map: "idx_notification_id")
+  @@index([recipient_id, created_time(sort: Desc)], map: "idx_notification_recipient_id_created_time")
+  @@ignore
+}
+
+model notification_request {
+  id                     String         @id @db.Uuid
+  created_time           BigInt
+  tenant_id              String         @db.Uuid
+  targets                String         @db.VarChar(10000)
+  template_id            String?        @db.Uuid
+  template               String?        @db.VarChar(10000000)
+  info                   String?        @db.VarChar(1000000)
+  additional_config      String?        @db.VarChar(1000)
+  originator_entity_id   String?        @db.Uuid
+  originator_entity_type String?        @db.VarChar(32)
+  rule_id                String?        @db.Uuid
+  status                 String?        @db.VarChar(32)
+  stats                  String?        @db.VarChar(10000)
+  notification           notification[] @ignore
+}
+
+model notification_rule {
+  id                    String                @id @db.Uuid
+  created_time          BigInt
+  tenant_id             String                @db.Uuid
+  name                  String                @db.VarChar(255)
+  enabled               Boolean               @default(true)
+  template_id           String                @db.Uuid
+  trigger_type          String                @db.VarChar(50)
+  trigger_config        String                @db.VarChar(1000)
+  recipients_config     String                @db.VarChar(10000)
+  additional_config     String?               @db.VarChar(255)
+  external_id           String?               @db.Uuid
+  notification_template notification_template @relation(fields: [template_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_notification_rule_template_id")
+
+  @@unique([tenant_id, external_id], map: "uq_notification_rule_external_id")
+  @@unique([tenant_id, name], map: "uq_notification_rule_name")
+  @@index([tenant_id, trigger_type, created_time(sort: Desc)], map: "idx_notification_rule_tenant_id_trigger_type_created_time")
+}
+
+model notification_target {
+  id            String  @id @db.Uuid
+  created_time  BigInt
+  tenant_id     String  @db.Uuid
+  name          String  @db.VarChar(255)
+  configuration String  @db.VarChar(10000)
+  external_id   String? @db.Uuid
+
+  @@unique([tenant_id, external_id], map: "uq_notification_target_external_id")
+  @@unique([tenant_id, name], map: "uq_notification_target_name")
+  @@index([tenant_id, created_time(sort: Desc)], map: "idx_notification_target_tenant_id_created_time")
+}
+
+model notification_template {
+  id                String              @id @db.Uuid
+  created_time      BigInt
+  tenant_id         String              @db.Uuid
+  name              String              @db.VarChar(255)
+  notification_type String              @db.VarChar(50)
+  configuration     String              @db.VarChar(10000000)
+  external_id       String?             @db.Uuid
+  notification_rule notification_rule[]
+
+  @@unique([tenant_id, external_id], map: "uq_notification_template_external_id")
+  @@unique([tenant_id, name], map: "uq_notification_template_name")
+  @@index([tenant_id, created_time(sort: Desc)], map: "idx_notification_template_tenant_id_created_time")
+}
+
+model oauth2_client_registration {
+  id                          String  @id @db.Uuid
+  created_time                BigInt
+  domain_name                 String? @db.VarChar(255)
+  domain_scheme               String? @db.VarChar(31)
+  client_registration_info_id String? @db.Uuid
+}
+
+model oauth2_client_registration_info {
+  id                             String   @id @db.Uuid
+  enabled                        Boolean?
+  created_time                   BigInt
+  additional_info                String?  @db.VarChar
+  client_id                      String?  @db.VarChar(255)
+  client_secret                  String?  @db.VarChar(255)
+  authorization_uri              String?  @db.VarChar(255)
+  token_uri                      String?  @db.VarChar(255)
+  scope                          String?  @db.VarChar(255)
+  user_info_uri                  String?  @db.VarChar(255)
+  user_name_attribute_name       String?  @db.VarChar(255)
+  jwk_set_uri                    String?  @db.VarChar(255)
+  client_authentication_method   String?  @db.VarChar(255)
+  login_button_label             String?  @db.VarChar(255)
+  login_button_icon              String?  @db.VarChar(255)
+  allow_user_creation            Boolean?
+  activate_user                  Boolean?
+  type                           String?  @db.VarChar(31)
+  basic_email_attribute_key      String?  @db.VarChar(31)
+  basic_first_name_attribute_key String?  @db.VarChar(31)
+  basic_last_name_attribute_key  String?  @db.VarChar(31)
+  basic_tenant_name_strategy     String?  @db.VarChar(31)
+  basic_tenant_name_pattern      String?  @db.VarChar(255)
+  basic_customer_name_pattern    String?  @db.VarChar(255)
+  basic_default_dashboard_name   String?  @db.VarChar(255)
+  basic_always_full_screen       Boolean?
+  custom_url                     String?  @db.VarChar(255)
+  custom_username                String?  @db.VarChar(255)
+  custom_password                String?  @db.VarChar(255)
+  custom_send_token              Boolean?
+}
+
+model oauth2_client_registration_template {
+  id                             String   @id @db.Uuid
+  created_time                   BigInt
+  additional_info                String?  @db.VarChar
+  provider_id                    String?  @unique(map: "oauth2_template_provider_id_unq_key") @db.VarChar(255)
+  authorization_uri              String?  @db.VarChar(255)
+  token_uri                      String?  @db.VarChar(255)
+  scope                          String?  @db.VarChar(255)
+  user_info_uri                  String?  @db.VarChar(255)
+  user_name_attribute_name       String?  @db.VarChar(255)
+  jwk_set_uri                    String?  @db.VarChar(255)
+  client_authentication_method   String?  @db.VarChar(255)
+  type                           String?  @db.VarChar(31)
+  basic_email_attribute_key      String?  @db.VarChar(31)
+  basic_first_name_attribute_key String?  @db.VarChar(31)
+  basic_last_name_attribute_key  String?  @db.VarChar(31)
+  basic_tenant_name_strategy     String?  @db.VarChar(31)
+  basic_tenant_name_pattern      String?  @db.VarChar(255)
+  basic_customer_name_pattern    String?  @db.VarChar(255)
+  basic_default_dashboard_name   String?  @db.VarChar(255)
+  basic_always_full_screen       Boolean?
+  comment                        String?  @db.VarChar
+  login_button_icon              String?  @db.VarChar(255)
+  login_button_label             String?  @db.VarChar(255)
+  help_link                      String?  @db.VarChar(255)
+}
+
+model oauth2_domain {
+  id               String        @id @db.Uuid
+  oauth2_params_id String        @db.Uuid
+  created_time     BigInt
+  domain_name      String?       @db.VarChar(255)
+  domain_scheme    String?       @db.VarChar(31)
+  oauth2_params    oauth2_params @relation(fields: [oauth2_params_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_domain_oauth2_params")
+
+  @@unique([oauth2_params_id, domain_name, domain_scheme], map: "oauth2_domain_unq_key")
+}
+
+model oauth2_mobile {
+  id               String        @id @db.Uuid
+  oauth2_params_id String        @db.Uuid
+  created_time     BigInt
+  pkg_name         String?       @db.VarChar(255)
+  app_secret       String?       @db.VarChar(2048)
+  oauth2_params    oauth2_params @relation(fields: [oauth2_params_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_mobile_oauth2_params")
+
+  @@unique([oauth2_params_id, pkg_name], map: "oauth2_mobile_unq_key")
+}
+
+model oauth2_params {
+  id                  String                @id @db.Uuid
+  enabled             Boolean?
+  tenant_id           String?               @db.Uuid
+  created_time        BigInt
+  oauth2_domain       oauth2_domain[]
+  oauth2_mobile       oauth2_mobile[]
+  oauth2_registration oauth2_registration[]
+}
+
+model oauth2_registration {
+  id                             String        @id @db.Uuid
+  oauth2_params_id               String        @db.Uuid
+  created_time                   BigInt
+  additional_info                String?       @db.VarChar
+  client_id                      String?       @db.VarChar(255)
+  client_secret                  String?       @db.VarChar(2048)
+  authorization_uri              String?       @db.VarChar(255)
+  token_uri                      String?       @db.VarChar(255)
+  scope                          String?       @db.VarChar(255)
+  platforms                      String?       @db.VarChar(255)
+  user_info_uri                  String?       @db.VarChar(255)
+  user_name_attribute_name       String?       @db.VarChar(255)
+  jwk_set_uri                    String?       @db.VarChar(255)
+  client_authentication_method   String?       @db.VarChar(255)
+  login_button_label             String?       @db.VarChar(255)
+  login_button_icon              String?       @db.VarChar(255)
+  allow_user_creation            Boolean?
+  activate_user                  Boolean?
+  type                           String?       @db.VarChar(31)
+  basic_email_attribute_key      String?       @db.VarChar(31)
+  basic_first_name_attribute_key String?       @db.VarChar(31)
+  basic_last_name_attribute_key  String?       @db.VarChar(31)
+  basic_tenant_name_strategy     String?       @db.VarChar(31)
+  basic_tenant_name_pattern      String?       @db.VarChar(255)
+  basic_customer_name_pattern    String?       @db.VarChar(255)
+  basic_default_dashboard_name   String?       @db.VarChar(255)
+  basic_always_full_screen       Boolean?
+  custom_url                     String?       @db.VarChar(255)
+  custom_username                String?       @db.VarChar(255)
+  custom_password                String?       @db.VarChar(255)
+  custom_send_token              Boolean?
+  oauth2_params                  oauth2_params @relation(fields: [oauth2_params_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_registration_oauth2_params")
+}
+
+model ota_package {
+  id                                                           String           @id @db.Uuid
+  created_time                                                 BigInt
+  tenant_id                                                    String           @db.Uuid
+  device_profile_id                                            String?          @db.Uuid
+  type                                                         String           @db.VarChar(32)
+  title                                                        String           @db.VarChar(255)
+  version                                                      String           @db.VarChar(255)
+  tag                                                          String?          @db.VarChar(255)
+  url                                                          String?          @db.VarChar(255)
+  file_name                                                    String?          @db.VarChar(255)
+  content_type                                                 String?          @db.VarChar(255)
+  checksum_algorithm                                           String?          @db.VarChar(32)
+  checksum                                                     String?          @db.VarChar(1020)
+  data                                                         Int?             @db.Oid
+  data_size                                                    BigInt?
+  additional_info                                              String?          @db.VarChar
+  device_device_firmware_idToota_package                       device[]         @relation("device_firmware_idToota_package")
+  device_device_software_idToota_package                       device[]         @relation("device_software_idToota_package")
+  device_profile_device_profile_firmware_idToota_package       device_profile[] @relation("device_profile_firmware_idToota_package")
+  device_profile_device_profile_software_idToota_package       device_profile[] @relation("device_profile_software_idToota_package")
+  device_profile_ota_package_device_profile_idTodevice_profile device_profile?  @relation("ota_package_device_profile_idTodevice_profile", fields: [device_profile_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_device_profile_ota_package")
+
+  @@unique([tenant_id, title, version], map: "ota_package_tenant_title_version_unq_key")
+}
+
+model queue {
+  id                      String   @id @db.Uuid
+  created_time            BigInt
+  tenant_id               String?  @db.Uuid
+  name                    String?  @db.VarChar(255)
+  topic                   String?  @db.VarChar(255)
+  poll_interval           Int?
+  partitions              Int?
+  consumer_per_partition  Boolean?
+  pack_processing_timeout BigInt?
+  submit_strategy         String?  @db.VarChar(255)
+  processing_strategy     String?  @db.VarChar(255)
+  additional_info         String?  @db.VarChar
+}
+
+model relation {
+  from_id             String  @db.Uuid
+  from_type           String  @db.VarChar(255)
+  to_id               String  @db.Uuid
+  to_type             String  @db.VarChar(255)
+  relation_type_group String  @db.VarChar(255)
+  relation_type       String  @db.VarChar(255)
+  additional_info     String? @db.VarChar
+
+  @@id([from_id, from_type, relation_type_group, relation_type, to_id, to_type])
+  @@index([relation_type_group, from_type, from_id], map: "idx_relation_from_id")
+  @@index([relation_type_group, to_type, to_id], map: "idx_relation_to_id")
+}
+
+model resource {
+  id            String  @id @db.Uuid
+  created_time  BigInt
+  tenant_id     String  @db.Uuid
+  title         String  @db.VarChar(255)
+  resource_type String  @db.VarChar(32)
+  resource_key  String  @db.VarChar(255)
+  search_text   String? @db.VarChar(255)
+  file_name     String  @db.VarChar(255)
+  data          String? @db.VarChar
+  etag          String? @db.VarChar
+
+  @@unique([tenant_id, resource_type, resource_key], map: "resource_unq_key")
+}
+
+model rpc {
+  id              String  @id @db.Uuid
+  created_time    BigInt
+  tenant_id       String  @db.Uuid
+  device_id       String  @db.Uuid
+  expiration_time BigInt
+  request         String  @db.VarChar(10000000)
+  response        String? @db.VarChar(10000000)
+  additional_info String? @db.VarChar(10000000)
+  status          String  @db.VarChar(255)
+
+  @@index([tenant_id, device_id], map: "idx_rpc_tenant_id_device_id")
+}
+
+model rule_chain {
+  id                                                                   String           @id @db.Uuid
+  created_time                                                         BigInt
+  additional_info                                                      String?          @db.VarChar
+  configuration                                                        String?          @db.VarChar(10000000)
+  name                                                                 String?          @db.VarChar(255)
+  type                                                                 String?          @db.VarChar(255)
+  first_rule_node_id                                                   String?          @db.Uuid
+  root                                                                 Boolean?
+  debug_mode                                                           Boolean?
+  tenant_id                                                            String?          @db.Uuid
+  external_id                                                          String?          @db.Uuid
+  asset_profile_asset_profile_default_edge_rule_chain_idTorule_chain   asset_profile[]  @relation("asset_profile_default_edge_rule_chain_idTorule_chain")
+  asset_profile_asset_profile_default_rule_chain_idTorule_chain        asset_profile[]  @relation("asset_profile_default_rule_chain_idTorule_chain")
+  device_profile_device_profile_default_edge_rule_chain_idTorule_chain device_profile[] @relation("device_profile_default_edge_rule_chain_idTorule_chain")
+  device_profile_device_profile_default_rule_chain_idTorule_chain      device_profile[] @relation("device_profile_default_rule_chain_idTorule_chain")
+
+  @@unique([tenant_id, external_id], map: "rule_chain_external_id_unq_key")
+  @@index([tenant_id, external_id], map: "idx_rule_chain_external_id")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+/// This model contains an index with non-default null sort order and requires additional setup for migrations. Visit https://pris.ly/d/default-index-null-ordering for more info.
+model rule_chain_debug_event {
+  id         String  @db.Uuid
+  tenant_id  String  @db.Uuid
+  ts         BigInt
+  entity_id  String  @db.Uuid
+  service_id String  @db.VarChar
+  e_message  String? @db.VarChar
+  e_error    String? @db.VarChar
+
+  @@index([tenant_id, entity_id, ts(sort: Desc)], map: "idx_rule_chain_debug_event_main")
+  @@ignore
+}
+
+model rule_node {
+  id                    String            @id @db.Uuid
+  created_time          BigInt
+  rule_chain_id         String?           @db.Uuid
+  additional_info       String?           @db.VarChar
+  configuration_version Int?              @default(0)
+  configuration         String?           @db.VarChar(10000000)
+  type                  String?           @db.VarChar(255)
+  name                  String?           @db.VarChar(255)
+  debug_mode            Boolean?
+  singleton_mode        Boolean?
+  external_id           String?           @db.Uuid
+  rule_node_state       rule_node_state[]
+
+  @@index([rule_chain_id, external_id], map: "idx_rule_node_external_id")
+  @@index([type], map: "idx_rule_node_type")
+  @@index([type, configuration_version], map: "idx_rule_node_type_configuration_version")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+/// This model contains an index with non-default null sort order and requires additional setup for migrations. Visit https://pris.ly/d/default-index-null-ordering for more info.
+model rule_node_debug_event {
+  id              String  @db.Uuid
+  tenant_id       String  @db.Uuid
+  ts              BigInt
+  entity_id       String  @db.Uuid
+  service_id      String? @db.VarChar
+  e_type          String? @db.VarChar
+  e_entity_id     String? @db.Uuid
+  e_entity_type   String? @db.VarChar
+  e_msg_id        String? @db.Uuid
+  e_msg_type      String? @db.VarChar
+  e_data_type     String? @db.VarChar
+  e_relation_type String? @db.VarChar
+  e_data          String? @db.VarChar
+  e_metadata      String? @db.VarChar
+  e_error         String? @db.VarChar
+
+  @@index([tenant_id, entity_id, ts(sort: Desc)], map: "idx_rule_node_debug_event_main")
+  @@ignore
+}
+
+model rule_node_state {
+  id           String    @id @db.Uuid
+  created_time BigInt
+  rule_node_id String    @db.Uuid
+  entity_type  String    @db.VarChar(32)
+  entity_id    String    @db.Uuid
+  state_data   String    @db.VarChar(16384)
+  rule_node    rule_node @relation(fields: [rule_node_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_rule_node_state_node_id")
+
+  @@unique([rule_node_id, entity_id], map: "rule_node_state_unq_key")
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+/// This model contains an index with non-default null sort order and requires additional setup for migrations. Visit https://pris.ly/d/default-index-null-ordering for more info.
+model stats_event {
+  id                   String @db.Uuid
+  tenant_id            String @db.Uuid
+  ts                   BigInt
+  entity_id            String @db.Uuid
+  service_id           String @db.VarChar
+  e_messages_processed BigInt
+  e_errors_occurred    BigInt
+
+  @@index([tenant_id, entity_id, ts(sort: Desc)], map: "idx_stats_event_main")
+  @@ignore
+}
+
+model tb_schema_settings {
+  schema_version BigInt @id
+}
+
+model tb_user {
+  id                 String              @id @db.Uuid
+  created_time       BigInt
+  additional_info    String?             @db.VarChar
+  authority          String?             @db.VarChar(255)
+  customer_id        String?             @db.Uuid
+  email              String?             @unique @db.VarChar(255)
+  first_name         String?             @db.VarChar(255)
+  last_name          String?             @db.VarChar(255)
+  phone              String?             @db.VarChar(255)
+  tenant_id          String?             @db.Uuid
+  notification       notification[]      @ignore
+  user_auth_settings user_auth_settings?
+  user_settings      user_settings[]
+}
+
+model tenant {
+  id                String         @id @db.Uuid
+  created_time      BigInt
+  additional_info   String?        @db.VarChar
+  tenant_profile_id String         @db.Uuid
+  address           String?        @db.VarChar
+  address2          String?        @db.VarChar
+  city              String?        @db.VarChar(255)
+  country           String?        @db.VarChar(255)
+  email             String?        @db.VarChar(255)
+  phone             String?        @db.VarChar(255)
+  region            String?        @db.VarChar(255)
+  state             String?        @db.VarChar(255)
+  title             String?        @db.VarChar(255)
+  zip               String?        @db.VarChar(255)
+  alarm_types       alarm_types[]
+  tenant_profile    tenant_profile @relation(fields: [tenant_profile_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_tenant_profile")
+}
+
+model tenant_profile {
+  id                      String   @id @db.Uuid
+  created_time            BigInt
+  name                    String?  @unique(map: "tenant_profile_name_unq_key") @db.VarChar(255)
+  profile_data            Json?
+  description             String?  @db.VarChar
+  is_default              Boolean?
+  isolated_tb_core        Boolean?
+  isolated_tb_rule_engine Boolean?
+  tenant                  tenant[]
+}
+
+model ts_kv_dictionary {
+  key    String @id(map: "ts_key_id_pkey") @db.VarChar(255)
+  key_id Int    @unique @default(autoincrement())
+}
+
+model ts_kv_latest {
+  entity_id String   @db.Uuid
+  key       Int
+  ts        BigInt
+  bool_v    Boolean?
+  str_v     String?  @db.VarChar(10000000)
+  long_v    BigInt?
+  dbl_v     Float?
+  json_v    Json?    @db.Json
+
+  @@id([entity_id, key])
+}
+
+model user_auth_settings {
+  id              String  @id @db.Uuid
+  created_time    BigInt
+  user_id         String  @unique @db.Uuid
+  two_fa_settings String? @db.VarChar
+  tb_user         tb_user @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_auth_settings_user_id")
+}
+
+model user_credentials {
+  id              String   @id @db.Uuid
+  created_time    BigInt
+  activate_token  String?  @unique @db.VarChar(255)
+  enabled         Boolean?
+  password        String?  @db.VarChar(255)
+  reset_token     String?  @unique @db.VarChar(255)
+  user_id         String?  @unique @db.Uuid
+  additional_info String?  @default("{}") @db.VarChar
+}
+
+model user_settings {
+  user_id  String  @db.Uuid
+  type     String  @db.VarChar(50)
+  settings String? @db.VarChar(10000)
+  tb_user  tb_user @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user_id")
+
+  @@id([user_id, type])
+}
+
+model widget_type {
+  id                    String                  @id @db.Uuid
+  created_time          BigInt
+  fqn                   String?                 @db.VarChar(512)
+  descriptor            String?                 @db.VarChar(1000000)
+  name                  String?                 @db.VarChar(255)
+  tenant_id             String?                 @db.Uuid
+  image                 String?                 @db.VarChar(1000000)
+  deprecated            Boolean                 @default(false)
+  description           String?                 @db.VarChar(1024)
+  external_id           String?                 @db.Uuid
+  widgets_bundle_widget widgets_bundle_widget[]
+
+  @@unique([tenant_id, fqn], map: "uq_widget_type_fqn")
+  @@unique([tenant_id, external_id], map: "widget_type_external_id_unq_key")
+}
+
+model widgets_bundle {
+  id                    String                  @id @db.Uuid
+  created_time          BigInt
+  alias                 String?                 @db.VarChar(255)
+  tenant_id             String?                 @db.Uuid
+  title                 String?                 @db.VarChar(255)
+  image                 String?                 @db.VarChar(1000000)
+  description           String?                 @db.VarChar(1024)
+  external_id           String?                 @db.Uuid
+  widgets_bundle_widget widgets_bundle_widget[]
+
+  @@unique([tenant_id, alias], map: "uq_widgets_bundle_alias")
+  @@unique([tenant_id, external_id], map: "widgets_bundle_external_id_unq_key")
+  @@index([tenant_id, external_id], map: "idx_widgets_bundle_external_id")
+}
+
+model widgets_bundle_widget {
+  widgets_bundle_id String         @db.Uuid
+  widget_type_id    String         @db.Uuid
+  widget_type_order Int            @default(0)
+  widget_type       widget_type    @relation(fields: [widget_type_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_widget_type")
+  widgets_bundle    widgets_bundle @relation(fields: [widgets_bundle_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_widgets_bundle")
+
+  @@id([widgets_bundle_id, widget_type_id])
+}
