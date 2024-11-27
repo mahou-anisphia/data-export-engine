@@ -15,6 +15,7 @@ export class GetUserHandler implements IQueryHandler<GetUserQuery> {
       select: {
         id: true,
         email: true,
+        authority: true,
         first_name: true,
         last_name: true,
         phone: true,
@@ -31,6 +32,7 @@ export class GetUserHandler implements IQueryHandler<GetUserQuery> {
       id: user.id,
       email: user.email,
       firstName: user.first_name,
+      authority: user.authority,
       lastName: user.last_name,
       phone: user.phone,
       createdTime: user.created_time.toString(), // Convert BigInt to string
