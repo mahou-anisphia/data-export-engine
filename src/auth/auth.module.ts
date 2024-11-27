@@ -16,7 +16,7 @@ const QueryHandlers = [GetUserHandler];
     CqrsModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.SECRET_KEY || 'your-fallback-secret',
+      secret: process.env.SECRET_KEY || 'alternate-secret',
       signOptions: {
         expiresIn: process.env.JWT_EXPIRATION || '1h',
       },

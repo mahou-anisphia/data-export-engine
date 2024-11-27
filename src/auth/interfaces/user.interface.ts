@@ -5,6 +5,7 @@ export interface IUser {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  tenant_id: string;
   createdTime: number;
   additionalInfo?: string;
 }
