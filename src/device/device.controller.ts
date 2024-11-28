@@ -8,6 +8,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Authority } from '../common/decorators/authority.decorator';
 import { IUser } from '../auth/interfaces/user.interface';
 import { GetDevicesDto } from './dto/get-devices.dto';
+import { PaginatedDeviceResponse } from './dto/device-response.dto';
 
 @Controller('devices')
 export class DeviceController {
@@ -17,7 +18,10 @@ export class DeviceController {
   @Get()
   @UseGuards(JwtAuthGuard, AuthorityGuard)
   @Authority('TENANT_ADMIN')
-  async getDevices(@CurrentUser() user: IUser, @Query() query: GetDevicesDto) {
+  async getDevices(
+    @CurrentUser() user: IUser,
+    @Query() query: GetDevicesDto,
+  ): Promise<PaginatedDeviceResponse> {
     return this.queryBus.execute(
       new GetDevicesQuery(
         user.tenant_id,
@@ -25,6 +29,7 @@ export class DeviceController {
         query.pageNumber,
         query.customerId,
         query.type,
+        query.profileId,
       ),
     );
   }

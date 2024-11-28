@@ -1,4 +1,3 @@
-// src/device/dto/get-devices.dto.ts
 import { IsOptional, IsUUID, IsString, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -23,4 +22,8 @@ export class GetDevicesDto {
   @IsOptional()
   @IsString()
   type?: string;
+
+  @IsOptional()
+  @IsUUID()
+  profileId?: string;
 }

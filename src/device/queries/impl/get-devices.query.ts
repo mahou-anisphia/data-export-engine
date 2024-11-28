@@ -6,5 +6,6 @@ export class GetDevicesQuery {
     public readonly pageNumber: number = 1,
     public readonly customerId?: string,
     public readonly type?: string,
+    public readonly profileId?: string,
   ) {}
 }
