@@ -36,7 +36,7 @@ Core dependencies:
 1. Clone and install dependencies:
 
 ```bash
-git clone https://github.com/ctp-swinburne/light-controller-frontend.git
+git clone https://github.com/mahou-anisphia/nordlicht-thingsboard-extenstion-be.git
 cd data-export-engine
 yarn install
 ```
