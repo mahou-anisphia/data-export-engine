@@ -17,7 +17,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthorityGuard } from './guards/authority.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { IUser } from './interfaces/user.interface';
-import { Authority } from 'src/common/decorators/authority.decorator';
+import { Authority } from '../common/decorators/authority.decorator';
 
 @Controller('auth')
 export class AuthController {

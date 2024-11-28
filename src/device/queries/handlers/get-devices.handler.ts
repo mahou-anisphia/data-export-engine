@@ -13,7 +13,13 @@ export class GetDevicesHandler implements IQueryHandler<GetDevicesQuery> {
   async execute(query: GetDevicesQuery): Promise<PaginatedDeviceResponse> {
     const { tenantId, pageSize, pageNumber, customerId, type, profileId } =
       query;
-    const skip = (pageNumber - 1) * pageSize;
+
+    // Convert pageSize and pageNumber to numbers if they're strings
+    const take =
+      typeof pageSize === 'string' ? parseInt(pageSize, 10) : pageSize;
+    const page =
+      typeof pageNumber === 'string' ? parseInt(pageNumber, 10) : pageNumber;
+    const skip = (page - 1) * take;
 
     const whereClause = {
       tenant_id: tenantId,
@@ -26,7 +32,7 @@ export class GetDevicesHandler implements IQueryHandler<GetDevicesQuery> {
       this.prisma.device.findMany({
         where: whereClause,
         skip,
-        take: pageSize,
+        take, // Using the converted number
         select: {
           id: true,
           name: true,
@@ -55,9 +61,9 @@ export class GetDevicesHandler implements IQueryHandler<GetDevicesQuery> {
       data: devices,
       meta: {
         total,
-        page: pageNumber,
-        pageSize,
-        totalPages: Math.ceil(total / pageSize),
+        page,
+        pageSize: take, // Using the converted number
+        totalPages: Math.ceil(total / take),
       },
     };
   }

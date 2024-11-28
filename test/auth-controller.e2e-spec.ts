@@ -1,4 +1,4 @@
-// test/app.e2e-spec.ts
+// test/auth-controller.e2e-spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   INestApplication,
@@ -6,7 +6,7 @@ import {
   VersioningType,
 } from '@nestjs/common';
 import * as request from 'supertest';
-import { AppModule } from './../src/app.module';
+import { AppModule } from '../src/app.module';
 import { BigIntInterceptor } from '../src/common/interceptors/bigint.interceptors';
 
 describe('AuthController (e2e)', () => {
