@@ -1,12 +1,5 @@
 // src/device/device.controller.ts
-import {
-  Controller,
-  Get,
-  Query,
-  UseGuards,
-  Version,
-  UseInterceptors,
-} from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Version } from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import { GetDevicesQuery } from './queries/impl/get-devices.query';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -16,10 +9,10 @@ import { Authority } from '../common/decorators/authority.decorator';
 import { IUser } from '../auth/interfaces/user.interface';
 import { GetDevicesDto } from './dto/get-devices.dto';
 import { PaginatedDeviceResponse } from './dto/device-response.dto';
-import { BigIntInterceptor } from '../common/interceptors/bigint.interceptors';
+// import { BigIntInterceptor } from '../common/interceptors/bigint.interceptors';
 
 @Controller('devices')
-@UseInterceptors(BigIntInterceptor)
+// @UseInterceptors(BigIntInterceptor)
 export class DeviceController {
   constructor(private readonly queryBus: QueryBus) {}
 
