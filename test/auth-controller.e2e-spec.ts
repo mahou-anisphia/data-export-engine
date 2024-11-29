@@ -177,4 +177,37 @@ describe('AuthController (e2e)', () => {
         });
     });
   });
+  describe('/v1/auth/users/count (GET)', () => {
+    let authToken: string;
+
+    beforeEach(async () => {
+      // Get auth token before tests
+      const loginResponse = await request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({
+          email: thingsboardUser.email,
+          password: thingsboardUser.password,
+        });
+
+      authToken = loginResponse.body.access_token;
+    });
+
+    it('should return the total number of users', () => {
+      return request(app.getHttpServer())
+        .get('/v1/auth/users/count')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('count');
+          expect(typeof res.body.count).toBe('number');
+          expect(res.body.count).toBeGreaterThan(0);
+        });
+    });
+
+    it('should fail without auth token', () => {
+      return request(app.getHttpServer())
+        .get('/v1/auth/users/count')
+        .expect(401);
+    });
+  });
 });

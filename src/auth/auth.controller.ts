@@ -13,6 +13,7 @@ import { LoginDto } from './dto/login.dto';
 import { LoginCommand } from './commands/impl/login.command';
 
 import { GetUserQuery } from './queries/impl/get-user.query';
+import { GetUserCountQuery } from './queries/impl/get-user-count.query';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthorityGuard } from './guards/authority.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -47,5 +48,13 @@ export class AuthController {
   @Authority('TENANT_ADMIN')
   async adminOnly(@CurrentUser() user: IUser) {
     return { message: 'Admin access granted', userId: user.id };
+  }
+
+  @Version('1')
+  @Get('users/count')
+  @UseGuards(JwtAuthGuard, AuthorityGuard)
+  @Authority('TENANT_ADMIN')
+  async getUserCount() {
+    return this.queryBus.execute(new GetUserCountQuery());
   }
 }

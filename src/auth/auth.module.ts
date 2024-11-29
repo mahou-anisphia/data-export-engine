@@ -6,11 +6,11 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { LoginHandler } from './commands/handlers/login.handler';
 import { GetUserHandler } from './queries/handlers/get-user.handler';
+import { GetUserCountHandler } from './queries/handlers/get-user-count.handler';
 import { JwtStrategy } from './strategies/jwt.strategies';
 
 const CommandHandlers = [LoginHandler];
-const QueryHandlers = [GetUserHandler];
-
+const QueryHandlers = [GetUserHandler, GetUserCountHandler];
 @Module({
   imports: [
     CqrsModule,

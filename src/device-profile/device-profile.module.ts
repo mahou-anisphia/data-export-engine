@@ -4,8 +4,9 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { DeviceProfileController } from './device-profile.controller';
 import { GetDeviceProfilesHandler } from './queries/handlers/get-device-profiles.handler';
 import { PrismaModule } from '../prisma/prisma.module';
+import { GetProfileCountsHandler } from './queries/handlers/get-device-profile-counts.handler';
 
-const QueryHandlers = [GetDeviceProfilesHandler];
+const QueryHandlers = [GetDeviceProfilesHandler, GetProfileCountsHandler];
 
 @Module({
   imports: [CqrsModule, PrismaModule],
