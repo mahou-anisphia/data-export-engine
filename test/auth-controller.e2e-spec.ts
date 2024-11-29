@@ -210,4 +210,78 @@ describe('AuthController (e2e)', () => {
         .expect(401);
     });
   });
+  describe('/v1/auth/users (GET)', () => {
+    let authToken: string;
+
+    beforeEach(async () => {
+      // Get auth token before users tests
+      const loginResponse = await request(app.getHttpServer())
+        .post('/v1/auth/login')
+        .send({
+          email: thingsboardUser.email,
+          password: thingsboardUser.password,
+        });
+
+      authToken = loginResponse.body.access_token;
+    });
+
+    it('should get list of users with pagination', () => {
+      return request(app.getHttpServer())
+        .get('/v1/auth/users')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('users');
+          expect(res.body).toHaveProperty('pagination');
+          expect(Array.isArray(res.body.users)).toBe(true);
+
+          // Check first user structure
+          if (res.body.users.length > 0) {
+            const user = res.body.users[0];
+            expect(user).toHaveProperty('id');
+            expect(user).toHaveProperty('email');
+            expect(user).toHaveProperty('firstName');
+            expect(user).toHaveProperty('lastName');
+            expect(user).toHaveProperty('phone');
+            expect(user).toHaveProperty('createdTime');
+            expect(user).toHaveProperty('additionalInfo');
+            expect(typeof user.createdTime).toBe('string');
+            expect(() => JSON.parse(user.additionalInfo)).not.toThrow();
+          }
+
+          // Check pagination structure
+          expect(res.body.pagination).toMatchObject({
+            total: expect.any(Number),
+            page: expect.any(Number),
+            limit: expect.any(Number),
+            totalPages: expect.any(Number),
+          });
+        });
+    });
+
+    it('should respect pagination parameters', () => {
+      return request(app.getHttpServer())
+        .get('/v1/auth/users?page=1&limit=5')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.users.length).toBeLessThanOrEqual(5);
+          expect(res.body.pagination).toMatchObject({
+            page: 1,
+            limit: 5,
+          });
+        });
+    });
+
+    it('should fail with invalid pagination parameters', () => {
+      return request(app.getHttpServer())
+        .get('/v1/auth/users?page=0&limit=0')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(400);
+    });
+
+    it('should fail without auth token', () => {
+      return request(app.getHttpServer()).get('/v1/auth/users').expect(401);
+    });
+  });
 });

@@ -7,10 +7,11 @@ import { AuthService } from './auth.service';
 import { LoginHandler } from './commands/handlers/login.handler';
 import { GetUserHandler } from './queries/handlers/get-user.handler';
 import { GetUserCountHandler } from './queries/handlers/get-user-count.handler';
+import { GetUsersHandler } from './queries/handlers/get-users.handler';
 import { JwtStrategy } from './strategies/jwt.strategies';
 
 const CommandHandlers = [LoginHandler];
-const QueryHandlers = [GetUserHandler, GetUserCountHandler];
+const QueryHandlers = [GetUserHandler, GetUserCountHandler, GetUsersHandler];
 @Module({
   imports: [
     CqrsModule,

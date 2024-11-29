@@ -6,6 +6,7 @@ import {
   UseGuards,
   Body,
   Version,
+  Query,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { LoginDto } from './dto/login.dto';
@@ -14,6 +15,8 @@ import { LoginCommand } from './commands/impl/login.command';
 
 import { GetUserQuery } from './queries/impl/get-user.query';
 import { GetUserCountQuery } from './queries/impl/get-user-count.query';
+import { GetUsersQuery } from './queries/impl/get-users.query';
+import { GetUsersDto } from './dto/get-users.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthorityGuard } from './guards/authority.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -56,5 +59,15 @@ export class AuthController {
   @Authority('TENANT_ADMIN')
   async getUserCount() {
     return this.queryBus.execute(new GetUserCountQuery());
+  }
+
+  @Version('1')
+  @Get('users')
+  @UseGuards(JwtAuthGuard, AuthorityGuard)
+  @Authority('TENANT_ADMIN')
+  async getUsers(@Query() query: GetUsersDto) {
+    return this.queryBus.execute(
+      new GetUsersQuery(query.page || 1, query.limit || 10),
+    );
   }
 }
