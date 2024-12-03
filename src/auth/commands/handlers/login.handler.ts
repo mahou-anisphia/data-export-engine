@@ -1,7 +1,7 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UnauthorizedException } from '@nestjs/common';
-import { LoginCommand } from '../impl/login.command';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { LoginCommand } from '@/auth/commands/impl/login.command';
+import { PrismaService } from '@/prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 

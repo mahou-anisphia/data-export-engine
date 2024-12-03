@@ -17,17 +17,17 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { LoginDto } from './dto/login.dto';
-import { GetUsersDto } from './dto/get-users.dto';
-import { LoginCommand } from './commands/impl/login.command';
-import { GetUserQuery } from './queries/impl/get-user.query';
-import { GetUserCountQuery } from './queries/impl/get-user-count.query';
-import { GetUsersQuery } from './queries/impl/get-users.query';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { AuthorityGuard } from './guards/authority.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Authority } from '../common/decorators/authority.decorator';
-import { IUser } from './interfaces/user.interface';
+import { LoginDto } from '@/auth/dto/login.dto';
+import { GetUsersDto } from '@/auth/dto/get-users.dto';
+import { LoginCommand } from '@/auth/commands/impl/login.command';
+import { GetUserQuery } from '@/auth/queries/impl/get-user.query';
+import { GetUserCountQuery } from '@/auth/queries/impl/get-user-count.query';
+import { GetUsersQuery } from '@/auth/queries/impl/get-users.query';
+import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
+import { AuthorityGuard } from '@/auth/guards/authority.guard';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { Authority } from '@/common/decorators/authority.decorator';
+import { IUser } from '@/auth/interfaces/user.interface';
 
 @ApiTags('Authentication')
 @Controller('auth')

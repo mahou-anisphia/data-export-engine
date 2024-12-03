@@ -1,7 +1,7 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { GetUserQuery } from '../impl/get-user.query';
+import { PrismaService } from '@/prisma/prisma.service';
+import { GetUserQuery } from '@/auth/queries/impl/get-user.query';
 
 @QueryHandler(GetUserQuery)
 export class GetUserHandler implements IQueryHandler<GetUserQuery> {

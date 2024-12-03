@@ -1,7 +1,7 @@
 // src/auth/queries/handlers/get-user-count.handler.ts
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { PrismaService } from '../../../prisma/prisma.service';
-import { GetUserCountQuery } from '../impl/get-user-count.query';
+import { PrismaService } from '@/prisma/prisma.service';
+import { GetUserCountQuery } from '@/auth/queries/impl/get-user-count.query';
 
 @QueryHandler(GetUserCountQuery)
 export class GetUserCountHandler implements IQueryHandler<GetUserCountQuery> {
