@@ -57,7 +57,7 @@ describe('AuthController (e2e)', () => {
           email: thingsboardUser.email,
           password: thingsboardUser.password,
         })
-        .expect(201)
+        .expect(200)
         .expect((res) => {
           expect(res.body).toHaveProperty('access_token');
           expect(res.body).toHaveProperty('user');
@@ -261,7 +261,7 @@ describe('AuthController (e2e)', () => {
 
     it('should respect pagination parameters', () => {
       return request(app.getHttpServer())
-        .get('/v1/auth/users?page=1&limit=5')
+        .get('/v1/auth/users?pageNumber=1&pageSize=5')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200)
         .expect((res) => {

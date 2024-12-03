@@ -60,7 +60,7 @@ describe('Device Counts (e2e)', () => {
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('total', 10);
+          expect(res.body).toHaveProperty('total', 17);
           expect(res.body).toHaveProperty('by_type');
           expect(res.body).toHaveProperty('by_profile');
 
@@ -69,11 +69,15 @@ describe('Device Counts (e2e)', () => {
             expect.arrayContaining([
               expect.objectContaining({
                 type: 'default',
-                count: 8,
+                count: 11,
               }),
               expect.objectContaining({
                 type: 'thermostat',
-                count: 2,
+                count: 5,
+              }),
+              expect.objectContaining({
+                type: 'Oring',
+                count: 1,
               }),
             ]),
           );
@@ -84,12 +88,12 @@ describe('Device Counts (e2e)', () => {
               expect.objectContaining({
                 profile_id: DEFAULT_PROFILE_ID,
                 profile_name: 'default',
-                count: 8,
+                count: 11,
               }),
               expect.objectContaining({
                 profile_id: THERMOSTAT_PROFILE_ID,
                 profile_name: 'thermostat',
-                count: 2,
+                count: 5,
               }),
             ]),
           );
@@ -102,17 +106,17 @@ describe('Device Counts (e2e)', () => {
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body.total).toBe(5); // Demo customer has 5 devices
+          expect(res.body.total).toBe(12); // Demo customer has 10 devices
 
           const defaultProfileCount = res.body.by_profile.find(
             (p) => p.profile_id === DEFAULT_PROFILE_ID,
           )?.count;
-          expect(defaultProfileCount).toBe(3); // DHT11, Raspberry Pi, and testdevice
+          expect(defaultProfileCount).toBe(6);
 
           const thermostatProfileCount = res.body.by_profile.find(
             (p) => p.profile_id === THERMOSTAT_PROFILE_ID,
           )?.count;
-          expect(thermostatProfileCount).toBe(2); // T1 and T2
+          expect(thermostatProfileCount).toBe(5);
         });
     });
   });

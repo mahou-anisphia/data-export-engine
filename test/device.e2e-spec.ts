@@ -63,10 +63,10 @@ describe('DeviceController (e2e)', () => {
           expect(res.body).toHaveProperty('data');
           expect(res.body).toHaveProperty('meta');
           expect(res.body.data).toBeInstanceOf(Array);
-          expect(res.body.meta.total).toBe(10); // Total from demo data
+          expect(res.body.meta.total).toBe(17); // Total from demo data
           expect(res.body.meta.page).toBe(1);
           expect(res.body.meta.pageSize).toBe(10);
-          expect(res.body.meta.totalPages).toBe(1);
+          expect(res.body.meta.totalPages).toBe(2);
         });
     });
 
@@ -82,8 +82,7 @@ describe('DeviceController (e2e)', () => {
               (device) => device.customer_id === DEMO_CUSTOMER_ID,
             ),
           ).toBe(true);
-          // Demo customer has 5 devices: DHT11, Raspberry Pi, 2 Thermostats, and testdevice
-          expect(res.body.data.length).toBe(5);
+          expect(res.body.data.length).toBe(10);
         });
     });
 
@@ -94,13 +93,16 @@ describe('DeviceController (e2e)', () => {
         .expect(200)
         .expect((res) => {
           expect(res.body.data).toBeInstanceOf(Array);
-          expect(res.body.data.length).toBe(2); // Two thermostat devices
+          expect(res.body.data.length).toBe(5); // Five thermostat devices
           expect(
             res.body.data.every((device) => device.type === 'thermostat'),
           ).toBe(true);
           expect(res.body.data.map((d) => d.name).sort()).toEqual([
             'Thermostat T1',
             'Thermostat T2',
+            'dev2',
+            'dev3',
+            'dev4',
           ]);
         });
     });
@@ -112,7 +114,7 @@ describe('DeviceController (e2e)', () => {
         .expect(200)
         .expect((res) => {
           expect(res.body.data).toBeInstanceOf(Array);
-          expect(res.body.data.length).toBe(2);
+          expect(res.body.data.length).toBe(5);
           expect(
             res.body.data.every(
               (device) => device.device_profile.id === THERMOSTAT_PROFILE_ID,
@@ -136,8 +138,8 @@ describe('DeviceController (e2e)', () => {
           expect(res.body.data.length).toBe(5);
           expect(res.body.meta.pageSize).toBe(5);
           expect(res.body.meta.page).toBe(1);
-          expect(res.body.meta.total).toBe(10);
-          expect(res.body.meta.totalPages).toBe(2);
+          expect(res.body.meta.total).toBe(17);
+          expect(res.body.meta.totalPages).toBe(4);
         });
     });
 

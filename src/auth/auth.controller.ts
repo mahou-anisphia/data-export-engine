@@ -7,22 +7,29 @@ import {
   Body,
   Version,
   Query,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { LoginDto } from './dto/login.dto';
-
+import { GetUsersDto } from './dto/get-users.dto';
 import { LoginCommand } from './commands/impl/login.command';
-
 import { GetUserQuery } from './queries/impl/get-user.query';
 import { GetUserCountQuery } from './queries/impl/get-user-count.query';
 import { GetUsersQuery } from './queries/impl/get-users.query';
-import { GetUsersDto } from './dto/get-users.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthorityGuard } from './guards/authority.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { IUser } from './interfaces/user.interface';
 import { Authority } from '../common/decorators/authority.decorator';
+import { IUser } from './interfaces/user.interface';
 
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -32,6 +39,16 @@ export class AuthController {
 
   @Version('1')
   @Post('login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'User login' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Successfully logged in',
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Invalid credentials',
+  })
   async login(@Body() loginDto: LoginDto) {
     return this.commandBus.execute(
       new LoginCommand(loginDto.email, loginDto.password),
@@ -41,6 +58,12 @@ export class AuthController {
   @Version('1')
   @Get('profile')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user profile' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'User profile retrieved successfully',
+  })
   async getProfile(@CurrentUser() user: IUser) {
     return this.queryBus.execute(new GetUserQuery(user.id));
   }
@@ -49,6 +72,16 @@ export class AuthController {
   @Get('admin')
   @UseGuards(JwtAuthGuard, AuthorityGuard)
   @Authority('TENANT_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Admin only endpoint' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Admin access granted',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions',
+  })
   async adminOnly(@CurrentUser() user: IUser) {
     return { message: 'Admin access granted', userId: user.id };
   }
@@ -57,6 +90,12 @@ export class AuthController {
   @Get('users/count')
   @UseGuards(JwtAuthGuard, AuthorityGuard)
   @Authority('TENANT_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get total user count' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'User count retrieved successfully',
+  })
   async getUserCount() {
     return this.queryBus.execute(new GetUserCountQuery());
   }
@@ -65,9 +104,15 @@ export class AuthController {
   @Get('users')
   @UseGuards(JwtAuthGuard, AuthorityGuard)
   @Authority('TENANT_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get paginated user list' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Users retrieved successfully',
+  })
   async getUsers(@Query() query: GetUsersDto) {
     return this.queryBus.execute(
-      new GetUsersQuery(query.page || 1, query.limit || 10),
+      new GetUsersQuery(query.pageNumber, query.pageSize),
     );
   }
 }

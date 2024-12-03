@@ -61,10 +61,10 @@ describe('Device Profile Counts (e2e)', () => {
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('total_profiles', 2);
-          expect(res.body).toHaveProperty('total_devices', 10);
+          expect(res.body).toHaveProperty('total_profiles', 5);
+          expect(res.body).toHaveProperty('total_devices', 17);
           expect(res.body).toHaveProperty('profiles');
-          expect(res.body.profiles).toHaveLength(2);
+          expect(res.body.profiles).toHaveLength(5);
 
           // Verify default profile
           const defaultProfile = res.body.profiles.find(
@@ -75,7 +75,7 @@ describe('Device Profile Counts (e2e)', () => {
             name: 'default',
             type: 'DEFAULT',
             is_default: true,
-            device_count: 8,
+            device_count: 11,
           });
 
           // Verify thermostat profile
@@ -87,7 +87,7 @@ describe('Device Profile Counts (e2e)', () => {
             name: 'thermostat',
             type: 'DEFAULT',
             is_default: false,
-            device_count: 2,
+            device_count: 5,
           });
         });
     });
