@@ -56,13 +56,17 @@ describe('DeviceProfileController (e2e)', () => {
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body).toBeInstanceOf(Array);
-          expect(res.body.length).toBeGreaterThan(0);
-          expect(res.body[0]).toHaveProperty('id');
-          expect(res.body[0]).toHaveProperty('name');
-          expect(res.body[0]).toHaveProperty('type');
+          expect(res.body).toHaveProperty('profiles');
+          expect(res.body).toHaveProperty('pagination');
+          expect(Array.isArray(res.body.profiles)).toBe(true);
+          expect(res.body.profiles.length).toBeGreaterThan(0);
+          expect(res.body.profiles[0]).toHaveProperty('id');
+          expect(res.body.profiles[0]).toHaveProperty('name');
+          expect(res.body.profiles[0]).toHaveProperty('type');
           // Verify default profile exists
-          expect(res.body.some((profile) => profile.is_default)).toBe(true);
+          expect(res.body.profiles.some((profile) => profile.is_default)).toBe(
+            true,
+          );
         });
     });
 
@@ -72,7 +76,7 @@ describe('DeviceProfileController (e2e)', () => {
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200);
 
-      const timestamps = response.body.map((profile) =>
+      const timestamps = response.body.profiles.map((profile) =>
         Number(profile.created_time),
       );
       const isSorted = timestamps.every((timestamp, index) => {
@@ -89,14 +93,15 @@ describe('DeviceProfileController (e2e)', () => {
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body[0]).toHaveProperty('id');
-          expect(res.body[0]).toHaveProperty('name');
-          expect(res.body[0]).toHaveProperty('type');
-          expect(res.body[0]).toHaveProperty('description');
-          expect(res.body[0]).toHaveProperty('is_default');
-          expect(res.body[0]).toHaveProperty('transport_type');
-          expect(res.body[0]).toHaveProperty('provision_type');
-          expect(res.body[0]).toHaveProperty('created_time');
+          const profile = res.body.profiles[0];
+          expect(profile).toHaveProperty('id');
+          expect(profile).toHaveProperty('name');
+          expect(profile).toHaveProperty('type');
+          expect(profile).toHaveProperty('description');
+          expect(profile).toHaveProperty('is_default');
+          expect(profile).toHaveProperty('transport_type');
+          expect(profile).toHaveProperty('provision_type');
+          expect(profile).toHaveProperty('created_time');
         });
     });
   });
