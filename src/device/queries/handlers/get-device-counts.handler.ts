@@ -1,7 +1,7 @@
 // src/device/queries/handlers/get-device-counts.handler.ts
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { GetDeviceCountsQuery } from '../impl/get-device-counts.query';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { GetDeviceCountsQuery } from '@/device/queries/impl/get-device-counts.query';
+import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

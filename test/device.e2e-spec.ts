@@ -1,10 +1,15 @@
 // test/device.e2e-spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import {
+  INestApplication,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { AuthService } from '../src/auth/auth.service';
+import { BigIntInterceptor } from '../src/common/interceptors/bigint.interceptors';
 
 describe('DeviceController (e2e)', () => {
   let app: INestApplication;
@@ -24,6 +29,23 @@ describe('DeviceController (e2e)', () => {
     app = moduleFixture.createNestApplication();
     prisma = app.get<PrismaService>(PrismaService);
     authService = app.get<AuthService>(AuthService);
+
+    // Apply the same configuration as in main.ts
+    app.enableVersioning({
+      type: VersioningType.URI,
+      prefix: 'v',
+    });
+
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
+
+    app.useGlobalInterceptors(new BigIntInterceptor());
+
     await app.init();
 
     // Get default tenant admin user
@@ -49,55 +71,55 @@ describe('DeviceController (e2e)', () => {
     await app.close();
   });
 
-  describe('/devices (GET)', () => {
+  describe('/v1/devices (GET)', () => {
     it('should require authentication', () => {
-      return request(app.getHttpServer()).get('/devices').expect(401);
+      return request(app.getHttpServer()).get('/v1/devices').expect(401);
     });
 
     it('should get paginated devices with default settings', () => {
       return request(app.getHttpServer())
-        .get('/devices')
+        .get('/v1/devices')
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body).toHaveProperty('data');
-          expect(res.body).toHaveProperty('meta');
-          expect(res.body.data).toBeInstanceOf(Array);
-          expect(res.body.meta.total).toBe(17); // Total from demo data
-          expect(res.body.meta.page).toBe(1);
-          expect(res.body.meta.pageSize).toBe(10);
-          expect(res.body.meta.totalPages).toBe(2);
+          expect(res.body).toHaveProperty('devices');
+          expect(res.body).toHaveProperty('pagination');
+          expect(Array.isArray(res.body.devices)).toBe(true);
+          expect(res.body.pagination.total).toBe(17); // Total from demo data
+          expect(res.body.pagination.page).toBe(1);
+          expect(res.body.pagination.limit).toBe(10);
+          expect(res.body.pagination.totalPages).toBe(2);
         });
     });
 
     it('should filter devices by customer ID', () => {
       return request(app.getHttpServer())
-        .get(`/devices?customerId=${DEMO_CUSTOMER_ID}`)
+        .get(`/v1/devices?customerId=${DEMO_CUSTOMER_ID}`)
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body.data).toBeInstanceOf(Array);
+          expect(res.body.devices).toBeInstanceOf(Array);
           expect(
-            res.body.data.every(
+            res.body.devices.every(
               (device) => device.customer_id === DEMO_CUSTOMER_ID,
             ),
           ).toBe(true);
-          expect(res.body.data.length).toBe(10);
+          expect(res.body.devices.length).toBe(10);
         });
     });
 
     it('should filter devices by type', () => {
       return request(app.getHttpServer())
-        .get('/devices?type=thermostat')
+        .get('/v1/devices?type=thermostat')
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body.data).toBeInstanceOf(Array);
-          expect(res.body.data.length).toBe(5); // Five thermostat devices
+          expect(res.body.devices).toBeInstanceOf(Array);
+          expect(res.body.devices.length).toBe(5); // Five thermostat devices
           expect(
-            res.body.data.every((device) => device.type === 'thermostat'),
+            res.body.devices.every((device) => device.type === 'thermostat'),
           ).toBe(true);
-          expect(res.body.data.map((d) => d.name).sort()).toEqual([
+          expect(res.body.devices.map((d) => d.name).sort()).toEqual([
             'Thermostat T1',
             'Thermostat T2',
             'dev2',
@@ -109,19 +131,19 @@ describe('DeviceController (e2e)', () => {
 
     it('should filter devices by profile ID', () => {
       return request(app.getHttpServer())
-        .get(`/devices?profileId=${THERMOSTAT_PROFILE_ID}`)
+        .get(`/v1/devices?profileId=${THERMOSTAT_PROFILE_ID}`)
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body.data).toBeInstanceOf(Array);
-          expect(res.body.data.length).toBe(5);
+          expect(res.body.devices).toBeInstanceOf(Array);
+          expect(res.body.devices.length).toBe(5);
           expect(
-            res.body.data.every(
+            res.body.devices.every(
               (device) => device.device_profile.id === THERMOSTAT_PROFILE_ID,
             ),
           ).toBe(true);
           expect(
-            res.body.data.every(
+            res.body.devices.every(
               (device) => device.device_profile.name === 'thermostat',
             ),
           ).toBe(true);
@@ -130,26 +152,26 @@ describe('DeviceController (e2e)', () => {
 
     it('should handle pagination correctly', () => {
       return request(app.getHttpServer())
-        .get('/devices?pageSize=5&pageNumber=1')
+        .get('/v1/devices?pageSize=5&pageNumber=1')
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          expect(res.body.data).toBeInstanceOf(Array);
-          expect(res.body.data.length).toBe(5);
-          expect(res.body.meta.pageSize).toBe(5);
-          expect(res.body.meta.page).toBe(1);
-          expect(res.body.meta.total).toBe(17);
-          expect(res.body.meta.totalPages).toBe(4);
+          expect(res.body.devices).toBeInstanceOf(Array);
+          expect(res.body.devices.length).toBe(5);
+          expect(res.body.pagination.limit).toBe(5);
+          expect(res.body.pagination.page).toBe(1);
+          expect(res.body.pagination.total).toBe(17);
+          expect(res.body.pagination.totalPages).toBe(4);
         });
     });
 
     it('should return correct device structure', () => {
       return request(app.getHttpServer())
-        .get('/devices?type=thermostat')
+        .get('/v1/devices?type=thermostat')
         .set('Authorization', `Bearer ${jwtToken}`)
         .expect(200)
         .expect((res) => {
-          const device = res.body.data[0];
+          const device = res.body.devices[0];
           expect(device).toHaveProperty('id');
           expect(device).toHaveProperty('name');
           expect(device).toHaveProperty('label');
@@ -162,6 +184,13 @@ describe('DeviceController (e2e)', () => {
           expect(device.device_profile).toHaveProperty('type');
           expect(device.device_profile).toHaveProperty('description');
         });
+    });
+
+    it('should fail with invalid pagination parameters', () => {
+      return request(app.getHttpServer())
+        .get('/v1/devices?pageNumber=0&pageSize=0')
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(400);
     });
   });
 });

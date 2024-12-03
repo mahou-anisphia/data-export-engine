@@ -1,9 +1,9 @@
 // src/device/queries/handlers/get-devices.handler.ts
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { GetDevicesQuery } from '../impl/get-devices.query';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { GetDevicesQuery } from '@/device/queries/impl/get-devices.query';
+import { PrismaService } from '@/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
-import { PaginatedDeviceResponse } from '../../dto/device-response.dto';
+import { PaginatedDeviceResponse } from '@/device/dto/device-response.dto';
 
 @Injectable()
 @QueryHandler(GetDevicesQuery)
@@ -14,14 +14,11 @@ export class GetDevicesHandler implements IQueryHandler<GetDevicesQuery> {
     const { tenantId, pageSize, pageNumber, customerId, type, profileId } =
       query;
 
-    // Convert pageSize and pageNumber to numbers if they're strings
-    const take =
-      typeof pageSize === 'string' ? parseInt(pageSize, 10) : pageSize;
-    const page =
-      typeof pageNumber === 'string' ? parseInt(pageNumber, 10) : pageNumber;
+    const take = Number(pageSize);
+    const page = Number(pageNumber);
     const skip = (page - 1) * take;
 
-    const whereClause = {
+    const where = {
       tenant_id: tenantId,
       ...(customerId && { customer_id: customerId }),
       ...(type && { type }),
@@ -30,16 +27,10 @@ export class GetDevicesHandler implements IQueryHandler<GetDevicesQuery> {
 
     const [devices, total] = await Promise.all([
       this.prisma.device.findMany({
-        where: whereClause,
+        where,
         skip,
-        take, // Using the converted number
-        select: {
-          id: true,
-          name: true,
-          label: true,
-          type: true,
-          created_time: true,
-          customer_id: true,
+        take,
+        include: {
           device_profile: {
             select: {
               id: true,
@@ -51,19 +42,22 @@ export class GetDevicesHandler implements IQueryHandler<GetDevicesQuery> {
             },
           },
         },
+        orderBy: {
+          created_time: 'desc',
+        },
       }),
-      this.prisma.device.count({
-        where: whereClause,
-      }),
+      this.prisma.device.count({ where }),
     ]);
 
+    const totalPages = Math.ceil(total / take);
+
     return {
-      data: devices,
-      meta: {
+      devices,
+      pagination: {
         total,
         page,
-        pageSize: take, // Using the converted number
-        totalPages: Math.ceil(total / take),
+        limit: take,
+        totalPages,
       },
     };
   }

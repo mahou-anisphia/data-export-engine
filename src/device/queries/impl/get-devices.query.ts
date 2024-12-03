@@ -1,4 +1,7 @@
 // src/device/queries/impl/get-devices.query.ts
+/**
+ * Query to get paginated list of devices
+ */
 export class GetDevicesQuery {
   constructor(
     public readonly tenantId: string,
