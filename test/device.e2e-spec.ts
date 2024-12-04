@@ -193,4 +193,42 @@ describe('DeviceController (e2e)', () => {
         .expect(400);
     });
   });
+
+  describe('/v1/devices/:deviceId/telemetry-keys (GET)', () => {
+    const DEVICE_ID = '98e28df0-a655-11ef-b85a-4de4157f3f25';
+
+    it('should require authentication', () => {
+      return request(app.getHttpServer())
+        .get(`/v1/devices/${DEVICE_ID}/telemetry-keys`)
+        .expect(401);
+    });
+
+    it('should get telemetry keys for a device', () => {
+      return request(app.getHttpServer())
+        .get(`/v1/devices/${DEVICE_ID}/telemetry-keys`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('deviceId', DEVICE_ID);
+          expect(res.body).toHaveProperty('keys');
+          expect(Array.isArray(res.body.keys)).toBe(true);
+          expect(res.body.keys).toContain('temperature');
+          expect(res.body.keys).toContain('humidity');
+          expect(res.body.keys).toHaveLength(2);
+          // Keys should be sorted alphabetically
+          expect(res.body.keys).toEqual(['humidity', 'temperature']);
+        });
+    });
+
+    it('should return 404 for non-existent device', () => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
+      return request(app.getHttpServer())
+        .get(`/v1/devices/${nonExistentId}/telemetry-keys`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(404)
+        .expect((res) => {
+          expect(res.body.message).toBe('Device not found');
+        });
+    });
+  });
 });

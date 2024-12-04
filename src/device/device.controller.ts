@@ -1,5 +1,12 @@
 // src/device/device.controller.ts
-import { Controller, Get, Query, UseGuards, Version } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  UseGuards,
+  Version,
+  Param,
+} from '@nestjs/common';
 import { QueryBus } from '@nestjs/cqrs';
 import { GetDevicesQuery } from '@/device/queries/impl/get-devices.query';
 import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
@@ -10,12 +17,19 @@ import { IUser } from '@/auth/interfaces/user.interface';
 import { GetDevicesDto } from '@/device/dto/get-devices.dto';
 import { PaginatedDeviceResponse } from '@/device/dto/device-response.dto';
 import { GetDeviceCountsQuery } from '@/device/queries/impl/get-device-counts.query';
+import { GetDeviceTelemetryKeysQuery } from '@/device/queries/impl/get-device-telemetry-keys.query';
+import { DeviceTelemetryKeysDto } from '@/device/dto/device-telemetry-keys.dto';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { GetDevicePartitionsQuery } from '@/device/queries/impl/get-device-partitions.query';
+import {
+  GetDevicePartitionsDto,
+  DevicePartitionsResponseDto,
+} from '@/device/dto/get-device-partitions.dto';
 
 @ApiTags('Devices')
 @Controller('devices')
@@ -73,6 +87,63 @@ export class DeviceController {
   ) {
     return this.queryBus.execute(
       new GetDeviceCountsQuery(user.tenant_id, customerId),
+    );
+  }
+
+  @Version('1')
+  @Get(':deviceId/telemetry-keys')
+  @UseGuards(JwtAuthGuard, AuthorityGuard)
+  @Authority('TENANT_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get device telemetry keys' })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved device telemetry keys',
+    type: DeviceTelemetryKeysDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Device not found',
+  })
+  async getDeviceTelemetryKeys(
+    @CurrentUser() user: IUser,
+    @Param('deviceId') deviceId: string,
+  ): Promise<DeviceTelemetryKeysDto> {
+    return this.queryBus.execute(
+      new GetDeviceTelemetryKeysQuery(user.tenant_id, deviceId),
+    );
+  }
+
+  @Version('1')
+  @Get(':deviceId/partitions')
+  @UseGuards(JwtAuthGuard, AuthorityGuard)
+  @Authority('TENANT_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get device telemetry partitions' })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved device partitions',
+    type: DevicePartitionsResponseDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Device not found',
+  })
+  async getDevicePartitions(
+    @CurrentUser() user: IUser,
+    @Param('deviceId') deviceId: string,
+    @Query() query: GetDevicePartitionsDto,
+  ): Promise<DevicePartitionsResponseDto> {
+    return this.queryBus.execute(
+      new GetDevicePartitionsQuery(user.tenant_id, deviceId, query.keys),
     );
   }
 }
