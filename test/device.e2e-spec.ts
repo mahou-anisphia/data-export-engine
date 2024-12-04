@@ -231,4 +231,113 @@ describe('DeviceController (e2e)', () => {
         });
     });
   });
+
+  describe('/v1/devices/:deviceId/partitions (GET)', () => {
+    const DEVICE_ID = '98e28df0-a655-11ef-b85a-4de4157f3f25';
+
+    it('should require authentication', () => {
+      return request(app.getHttpServer())
+        .get(`/v1/devices/${DEVICE_ID}/partitions?keys=temperature,humidity`)
+        .expect(401);
+    });
+
+    it('should get partitions for multiple keys', () => {
+      return request(app.getHttpServer())
+        .get(`/v1/devices/${DEVICE_ID}/partitions?keys=temperature,humidity`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('deviceId', DEVICE_ID);
+          expect(res.body).toHaveProperty('partitions');
+          expect(Array.isArray(res.body.partitions)).toBe(true);
+
+          // Verify we have entries for both keys
+          const keys = res.body.partitions.map((p) => p.key);
+          expect(keys).toContain('temperature');
+          expect(keys).toContain('humidity');
+
+          // Verify structure of partition entries
+          res.body.partitions.forEach((partition) => {
+            expect(partition).toHaveProperty('key');
+            expect(partition).toHaveProperty('partition');
+            expect(['temperature', 'humidity']).toContain(partition.key);
+            expect(typeof partition.partition).toBe('string');
+            // Verify partition is a valid timestamp string
+            expect(Number.isInteger(Number(partition.partition))).toBe(true);
+          });
+
+          // Verify we have multiple partitions for each key
+          const temperaturePartitions = res.body.partitions.filter(
+            (p) => p.key === 'temperature',
+          );
+          const humidityPartitions = res.body.partitions.filter(
+            (p) => p.key === 'humidity',
+          );
+          expect(temperaturePartitions.length).toBeGreaterThan(1);
+          expect(humidityPartitions.length).toBeGreaterThan(1);
+        });
+    });
+
+    it('should get partitions for a single key', () => {
+      return request(app.getHttpServer())
+        .get(`/v1/devices/${DEVICE_ID}/partitions?keys=temperature`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('deviceId', DEVICE_ID);
+          expect(res.body).toHaveProperty('partitions');
+          expect(Array.isArray(res.body.partitions)).toBe(true);
+
+          // Verify we only have temperature entries
+          expect(
+            res.body.partitions.every((p) => p.key === 'temperature'),
+          ).toBe(true);
+          expect(res.body.partitions.length).toBeGreaterThan(1);
+        });
+    });
+
+    it('should handle array format of keys parameter', () => {
+      return request(app.getHttpServer())
+        .get(
+          `/v1/devices/${DEVICE_ID}/partitions?keys=temperature&keys=humidity`,
+        )
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(200)
+        .expect((res) => {
+          const keys = res.body.partitions.map((p) => p.key);
+          expect(keys).toContain('temperature');
+          expect(keys).toContain('humidity');
+        });
+    });
+
+    it('should return 404 for non-existent device', () => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
+      return request(app.getHttpServer())
+        .get(`/v1/devices/${nonExistentId}/partitions?keys=temperature`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(404)
+        .expect((res) => {
+          expect(res.body.message).toBe('Device not found');
+        });
+    });
+
+    it('should handle empty keys parameter', () => {
+      return request(app.getHttpServer())
+        .get(`/v1/devices/${DEVICE_ID}/partitions?keys=`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(400);
+    });
+
+    it('should handle invalid keys parameter', () => {
+      return request(app.getHttpServer())
+        .get(`/v1/devices/${DEVICE_ID}/partitions?keys=invalid_key`)
+        .set('Authorization', `Bearer ${jwtToken}`)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body).toHaveProperty('deviceId', DEVICE_ID);
+          expect(res.body).toHaveProperty('partitions');
+          expect(res.body.partitions).toHaveLength(0);
+        });
+    });
+  });
 });
