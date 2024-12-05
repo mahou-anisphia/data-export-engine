@@ -30,6 +30,8 @@ import {
   GetDevicePartitionsDto,
   DevicePartitionsResponseDto,
 } from '@/device/dto/get-device-partitions.dto';
+import { GetDeviceLatestTelemetryQuery } from '@/device/queries/impl/get-device-latest-telemetry.query';
+import { DeviceLatestTelemetryDto } from '@/device/dto/device-latest-telemetry.dto';
 
 @ApiTags('Devices')
 @Controller('devices')
@@ -144,6 +146,34 @@ export class DeviceController {
   ): Promise<DevicePartitionsResponseDto> {
     return this.queryBus.execute(
       new GetDevicePartitionsQuery(user.tenant_id, deviceId, query.keys),
+    );
+  }
+
+  @Version('1')
+  @Get(':deviceId/latest-telemetry')
+  @UseGuards(JwtAuthGuard, AuthorityGuard)
+  @Authority('TENANT_ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get device latest telemetry values' })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved device latest telemetry',
+    type: DeviceLatestTelemetryDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Device not found',
+  })
+  async getDeviceLatestTelemetry(
+    @CurrentUser() user: IUser,
+    @Param('deviceId') deviceId: string,
+  ): Promise<DeviceLatestTelemetryDto> {
+    return this.queryBus.execute(
+      new GetDeviceLatestTelemetryQuery(user.tenant_id, deviceId),
     );
   }
 }
