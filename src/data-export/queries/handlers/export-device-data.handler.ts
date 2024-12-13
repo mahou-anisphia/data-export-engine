@@ -32,28 +32,24 @@ export class ExportDeviceDataHandler
       return timestamp;
     }
 
-    // Try to convert timestamp to milliseconds if needed
+    // Convert timestamp to milliseconds if needed
     const timestampMs =
       timestamp.toString().length === 10 ? timestamp * 1000 : timestamp;
-
-    // Check if the date is valid before formatting
     const date = new Date(timestampMs);
+
+    // Return original timestamp if date is invalid
     if (isNaN(date.getTime())) {
-      // If invalid date, return the original timestamp
       return timestamp;
     }
 
-    switch (format) {
-      case TimeFormat.ISO:
-        return date.toISOString();
-      case TimeFormat.HUMAN:
-        return date.toLocaleString();
-      case TimeFormat.RELATIVE:
-        const diff = Date.now() - timestampMs;
-        return `${Math.floor(diff / 1000)} seconds ago`;
-      default:
-        return timestamp;
-    }
+    // Simple mapping of formats to their output
+    const formatMap = {
+      [TimeFormat.ISO]: date.toISOString(),
+      [TimeFormat.HUMAN]: date.toLocaleString(),
+      [TimeFormat.RELATIVE]: `${Math.floor((Date.now() - timestampMs) / 1000)} seconds ago`,
+    };
+
+    return formatMap[format] || timestamp;
   }
 
   private handleNullValue(
@@ -91,9 +87,10 @@ export class ExportDeviceDataHandler
 
         for (const row of result.rows) {
           let value = null;
+          // Determine the value type and assign accordingly
           if (row.bool_v !== null) value = row.bool_v;
-          else if (row.dbl_v !== null) value = row.dbl_v;
-          else if (row.long_v !== null) value = row.long_v;
+          else if (row.dbl_v !== null) value = Number(row.dbl_v);
+          else if (row.long_v !== null) value = Number(row.long_v);
           else if (row.str_v !== null) value = row.str_v;
           else if (row.json_v !== null) {
             try {
@@ -109,8 +106,9 @@ export class ExportDeviceDataHandler
             query.exportRequest.nullCustomValue,
           );
 
-          if (value === undefined) continue; // Skip null values if specified
+          if (value === undefined) continue;
 
+          // For XLSX, only stringify objects and booleans
           if (query.exportRequest.fileFormat === FileFormat.XLSX) {
             if (typeof value === 'object') {
               value = JSON.stringify(value);
@@ -118,11 +116,15 @@ export class ExportDeviceDataHandler
             if (typeof value === 'boolean') {
               value = value.toString();
             }
+            // Convert string numbers to actual numbers
+            if (typeof value === 'string' && !isNaN(Number(value))) {
+              value = Number(value);
+            }
           }
 
           yield {
             timestamp: this.formatTimestamp(
-              row.ts,
+              Number(row.ts),
               query.exportRequest.timeFormat,
             ),
             key: keyPartition.key,
