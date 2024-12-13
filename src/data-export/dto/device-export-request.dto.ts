@@ -21,7 +21,7 @@ export enum FileFormat {
 
 export enum DataOrganization {
   KEY = 'key',
-  POSITION = 'position',
+  PARTITION = 'partition',
   FLAT = 'flat',
 }
 
