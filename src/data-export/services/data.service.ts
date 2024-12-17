@@ -5,7 +5,29 @@ import { CassandraService } from '@/cassandra/cassandra.service';
 import { ExportDeviceDataQuery } from '@/data-export/queries/impl/export-device-data.query';
 import { TimeService } from './time.service';
 import { NullService } from './null.service';
-import { FileFormat } from '@/data-export/dto/device-export-request.dto';
+import {
+  FileFormat,
+  DataOrganization,
+} from '@/data-export/dto/device-export-request.dto';
+import {
+  FlatDataEntry,
+  KeyOrganizedEntry,
+  PartitionOrganizedEntry,
+} from '@/data-export/dto/data-export-query.dto';
+
+const groupBy = <T, K extends keyof T>(
+  array: T[],
+  key: K,
+): Record<string, T[]> => {
+  return array.reduce(
+    (acc, item) => {
+      const value = item[key];
+      const group = acc[value as string] || [];
+      return { ...acc, [value as string]: [...group, item] };
+    },
+    {} as Record<string, T[]>,
+  );
+};
 
 @Injectable()
 export class DataService {
@@ -31,7 +53,15 @@ export class DataService {
     return device;
   }
 
-  async *generateData(query: ExportDeviceDataQuery) {
+  // This is the method your handler is looking for
+  async *generateData(
+    query: ExportDeviceDataQuery,
+  ): AsyncGenerator<
+    FlatDataEntry[] | KeyOrganizedEntry[] | PartitionOrganizedEntry[]
+  > {
+    const rawData: FlatDataEntry[] = [];
+
+    // First collect all data
     for (const keyPartition of query.exportRequest.selectedData) {
       for (const partition of keyPartition.partitions) {
         const result = await this.cassandra.executeQuery(
@@ -46,7 +76,6 @@ export class DataService {
 
         for (const row of result.rows) {
           const value = this.extractValue(row, query.exportRequest.fileFormat);
-
           const processedValue = this.nullService.handleNullValue(
             value,
             query.exportRequest.nullValue,
@@ -55,16 +84,75 @@ export class DataService {
 
           if (processedValue === undefined) continue;
 
-          yield {
-            timestamp: this.timeService.formatTimestamp(
-              Number(row.ts),
-              query.exportRequest.timeFormat,
-            ),
+          const timestamp = this.timeService.formatTimestamp(
+            Number(row.ts),
+            query.exportRequest.timeFormat,
+          );
+
+          rawData.push({
+            timestamp,
             key: keyPartition.key,
             value: processedValue,
             partition: partition.toString(),
-          };
+          });
         }
+      }
+    }
+
+    // Then organize based on requested format
+    switch (query.exportRequest.dataOrganization) {
+      case DataOrganization.KEY: {
+        // Simply sort the data by timestamp, then key
+        const keyOrganized = [...rawData].sort((a, b) => {
+          const timeCompare = String(a.timestamp).localeCompare(
+            String(b.timestamp),
+          );
+          if (timeCompare !== 0) return timeCompare;
+          return a.key.localeCompare(b.key);
+        });
+        yield keyOrganized;
+        break;
+      }
+
+      case DataOrganization.PARTITION: {
+        // Group by timestamp first to get all sensors at each timestamp
+        const timestampGroups = groupBy(rawData, 'timestamp');
+        const partitionOrganized: PartitionOrganizedEntry[] = [];
+
+        for (const [timestamp, entries] of Object.entries(timestampGroups)) {
+          const partition = entries[0].partition; // All entries in same timestamp have same partition
+
+          // Create an object with all sensor values as columns
+          const sensorValues: { [key: string]: any } = {};
+          entries.forEach((entry) => {
+            sensorValues[entry.key] = entry.value;
+          });
+
+          partitionOrganized.push({
+            partition,
+            timestamp,
+            ...sensorValues,
+          });
+        }
+
+        // Sort by timestamp
+        yield partitionOrganized.sort((a, b) =>
+          String(a.timestamp).localeCompare(String(b.timestamp)),
+        );
+        break;
+      }
+
+      case DataOrganization.FLAT:
+      default: {
+        // Sort by timestamp, then key
+        yield rawData.sort((a, b) => {
+          const timeCompare = String(a.timestamp).localeCompare(
+            String(b.timestamp),
+          );
+          if (timeCompare !== 0) return timeCompare;
+          return a.key.localeCompare(b.key);
+        });
+        break;
       }
     }
   }
