@@ -61,7 +61,7 @@ export class DataService {
   > {
     const rawData: FlatDataEntry[] = [];
 
-    // First collect all data
+    // Collect raw data without null handling
     for (const keyPartition of query.exportRequest.selectedData) {
       for (const partition of keyPartition.partitions) {
         const result = await this.cassandra.executeQuery(
@@ -76,14 +76,6 @@ export class DataService {
 
         for (const row of result.rows) {
           const value = this.extractValue(row, query.exportRequest.fileFormat);
-          const processedValue = this.nullService.handleNullValue(
-            value,
-            query.exportRequest.nullValue,
-            query.exportRequest.nullCustomValue,
-          );
-
-          if (processedValue === undefined) continue;
-
           const timestamp = this.timeService.formatTimestamp(
             Number(row.ts),
             query.exportRequest.timeFormat,
@@ -92,10 +84,67 @@ export class DataService {
           rawData.push({
             timestamp,
             key: keyPartition.key,
-            value: processedValue,
+            value,
             partition: partition.toString(),
           });
         }
+      }
+    }
+
+    switch (query.exportRequest.dataOrganization) {
+      case DataOrganization.PARTITION: {
+        const timestampGroups = groupBy(rawData, 'timestamp');
+        const partitionOrganized: PartitionOrganizedEntry[] = [];
+        const allKeys = new Set(rawData.map((entry) => entry.key));
+
+        for (const [timestamp, entries] of Object.entries(timestampGroups)) {
+          const partition = entries[0].partition;
+          const sensorValues: { [key: string]: any } = {};
+
+          // Initialize all sensors with null
+          allKeys.forEach((key) => {
+            sensorValues[key] = this.nullService.handleNullValue(
+              null,
+              query.exportRequest.nullValue,
+              query.exportRequest.nullCustomValue,
+            );
+          });
+
+          // Fill in actual values
+          entries.forEach((entry) => {
+            if (entry.value !== null) {
+              sensorValues[entry.key] = entry.value;
+            }
+          });
+
+          // Skip if all values are undefined (SKIP handling)
+          const hasNonNullValue = Object.values(sensorValues).some(
+            (v) => v !== undefined,
+          );
+          if (hasNonNullValue) {
+            partitionOrganized.push({
+              partition,
+              timestamp,
+              ...sensorValues,
+            });
+          }
+        }
+
+        yield partitionOrganized.sort((a, b) =>
+          String(a.timestamp).localeCompare(String(b.timestamp)),
+        );
+        break;
+      }
+
+      case DataOrganization.KEY:
+      case DataOrganization.FLAT:
+      default: {
+        yield rawData.sort((a, b) => {
+          const timeCompare = String(a.timestamp).localeCompare(
+            String(b.timestamp),
+          );
+          return timeCompare !== 0 ? timeCompare : a.key.localeCompare(b.key);
+        });
       }
     }
 
